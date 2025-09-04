@@ -1,23 +1,47 @@
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Download, FileText } from 'lucide-react';
+import { Download, FileText, ExternalLink } from 'lucide-react';
 import { useState } from 'react';
 
 const Resume = () => {
+  const [downloadStatus, setDownloadStatus] = useState<{ [key: string]: string }>({});
 
-  const [isDark, setIsDark] = useState(false);
-  
-    const toggleTheme = () => {
-      setIsDark(!isDark);
-      // You can add theme switching logic here
-    };
-  const handleDownload = (filename: string, displayName: string) => {
-    const link = document.createElement('a');
-    link.href = `/${filename}`;
-    link.download = displayName;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  const handleDownload = async (filename: string, displayName: string) => {
+    try {
+      setDownloadStatus(prev => ({ ...prev, [filename]: 'downloading' }));
+
+      const link = document.createElement('a');
+      link.href = `/${filename}`;
+      link.download = displayName;
+      link.target = '_blank';
+      link.rel = 'noopener noreferrer';
+
+      // Add error handling
+      link.onerror = () => {
+        setDownloadStatus(prev => ({ ...prev, [filename]: 'error' }));
+        // Fallback: open in new tab
+        window.open(`/${filename}`, '_blank');
+      };
+
+      link.onload = () => {
+        setDownloadStatus(prev => ({ ...prev, [filename]: 'success' }));
+      };
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clear status after 3 seconds
+      setTimeout(() => {
+        setDownloadStatus(prev => ({ ...prev, [filename]: '' }));
+      }, 3000);
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      setDownloadStatus(prev => ({ ...prev, [filename]: 'error' }));
+      // Fallback: open in new tab
+      window.open(`/${filename}`, '_blank');
+    }
   };
 
   const certificates = [
@@ -53,7 +77,7 @@ const Resume = () => {
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
-      className="max-w-6xl mx-auto"
+      className="max-w-6xl mx-auto px-4"
     >
       <h1 className="text-4xl font-bold mb-8 text-center">Resume & Certificates</h1>
 
@@ -64,22 +88,39 @@ const Resume = () => {
           Get a comprehensive overview of my skills, experience, and education.
         </p>
 
-        <Button
-          size="lg"
-          onClick={() => handleDownload('Roushan_Kumar_Resume.pdf', 'Roushan_Kumar_Resume.pdf')}
-          className="bg-primary hover:bg-primary/90"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Download PDF Resume
-        </Button>
+        <div className="flex flex-col sm:flex-row gap-4">
+          <Button
+            size="lg"
+            onClick={() => handleDownload('Roushan_Kumar_Resume.pdf', 'Roushan_Kumar_Resume.pdf')}
+            className="bg-primary hover:bg-primary/90"
+            disabled={downloadStatus['Roushan_Kumar_Resume.pdf'] === 'downloading'}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {downloadStatus['Roushan_Kumar_Resume.pdf'] === 'downloading' ? 'Downloading...' : 'Download PDF Resume'}
+          </Button>
 
-        <div className="mt-8">
-          <iframe
-            src="/Roushan_Kumar_Resume.pdf"
-            className="w-full h-96 rounded-lg border"
-            title="Resume Preview"
-          />
+          <Button
+            size="lg"
+            variant="outline"
+            onClick={() => window.open('/Roushan_Kumar_Resume.pdf', '_blank')}
+            className="border-primary text-primary hover:bg-primary hover:text-primary-foreground"
+          >
+            <ExternalLink className="mr-2 h-4 w-4" />
+            View in Browser
+          </Button>
         </div>
+
+        {downloadStatus['Roushan_Kumar_Resume.pdf'] === 'error' && (
+          <p className="text-red-500 mt-2 text-sm">
+            Download failed. Try viewing in browser instead.
+          </p>
+        )}
+
+        {downloadStatus['Roushan_Kumar_Resume.pdf'] === 'success' && (
+          <p className="text-green-500 mt-2 text-sm">
+            Download completed successfully!
+          </p>
+        )}
       </div>
 
       {/* Certificates Section */}
@@ -107,40 +148,52 @@ const Resume = () => {
                 {cert.displayName}
               </p>
 
-              <Button
-                size="sm"
-                onClick={() => handleDownload(cert.filename, cert.displayName)}
-                className="w-full bg-neural-500 hover:bg-neural-600 text-white"
-              >
-                <Download className="mr-2 h-3 w-3" />
-                Download
-              </Button>
+              <div className="flex flex-col gap-2">
+                <Button
+                  size="sm"
+                  onClick={() => handleDownload(cert.filename, cert.displayName)}
+                  className="w-full bg-neural-500 hover:bg-neural-600 text-white"
+                  disabled={downloadStatus[cert.filename] === 'downloading'}
+                >
+                  <Download className="mr-2 h-3 w-3" />
+                  {downloadStatus[cert.filename] === 'downloading' ? 'Downloading...' : 'Download'}
+                </Button>
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => window.open(`/${cert.filename}`, '_blank')}
+                  className="w-full border-neural-500 text-neural-500 hover:bg-neural-500 hover:text-white"
+                >
+                  <ExternalLink className="mr-2 h-3 w-3" />
+                  View
+                </Button>
+              </div>
+
+              {downloadStatus[cert.filename] === 'error' && (
+                <p className="text-red-500 mt-2 text-xs">
+                  Download failed
+                </p>
+              )}
+
+              {downloadStatus[cert.filename] === 'success' && (
+                <p className="text-green-500 mt-2 text-xs">
+                  Downloaded!
+                </p>
+              )}
             </motion.div>
           ))}
         </div>
 
-        {/* Certificate Preview Section */}
-        <div className="mt-12">
-          <h3 className="text-xl font-semibold mb-4">Certificate Preview</h3>
-          <div className="bg-slate-100 dark:bg-slate-900 rounded-lg p-4">
-            <p className="text-sm text-muted-foreground mb-4">
-              Click on any certificate above to download, or select one below to preview:
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {certificates.slice(0, 2).map((cert, index) => (
-                <div key={index} className="bg-white dark:bg-slate-800 rounded border p-2">
-                  <iframe
-                    src={`/${cert.filename}`}
-                    className="w-full h-64 rounded border-0"
-                    title={`${cert.title} Preview`}
-                  />
-                  <p className="text-xs text-center mt-2 text-muted-foreground">
-                    {cert.title}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
+        {/* Info Section */}
+        <div className="mt-12 bg-blue-50 dark:bg-blue-900/20 rounded-lg p-6">
+          <h3 className="text-lg font-semibold mb-2 text-blue-800 dark:text-blue-200">📄 PDF Viewing Tips</h3>
+          <ul className="text-sm text-blue-700 dark:text-blue-300 space-y-1">
+            <li>• Click "Download" to save certificates to your device</li>
+            <li>• Click "View" to open certificates in a new browser tab</li>
+            <li>• If downloads fail, use the "View" option as a fallback</li>
+            <li>• Make sure your browser allows pop-ups for this site</li>
+          </ul>
         </div>
       </div>
     </motion.div>
